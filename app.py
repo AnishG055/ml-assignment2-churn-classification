@@ -1,105 +1,70 @@
-import io
-from pathlib import Path
-import joblib
-import numpy as np
-import pandas as pd
 import streamlit as st
+import pandas as pd
+import joblib
+import os
+import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.metrics import (
     accuracy_score, roc_auc_score, precision_score,
-    recall_score, f1_score, matthews_corrcoef,
-    confusion_matrix, classification_report
+    recall_score, f1_score, matthews_corrcoef, confusion_matrix
 )
 
-ROOT = Path(__file__).resolve().parent
+st.title("📊 Model Evaluation & Classification Dashboard")
 
-MODEL_PATHS = {
-    "Logistic Regression": ROOT / "model" / "logistic_regression.joblib",
-    "Decision Tree": ROOT / "model" / "decision_tree.joblib",
-    "kNN": ROOT / "model" / "knn.joblib",
-    "Naive Bayes": ROOT / "model" / "naive_bayes.joblib",
-    "Random Forest": ROOT / "model" / "random_forest.joblib",
-    "SVM (provisional)": ROOT / "model" / "svm_provisional.joblib",
+st.sidebar.header("Configuration")
+uploaded_file = st.sidebar.file_uploader("Upload test_data.csv", type=["csv"])
+
+# Updated model options matching your repository filenames and extensions
+model_choice = st.sidebar.selectbox(
+    "Select Classification Model",
+    ["Logistic Regression", "Decision Tree", "kNN", "Naive Bayes", "Random Forest", "SVM"]
+)
+
+# Mapping selections to the actual .joblib files in your root directory
+file_map = {
+    "Logistic Regression": "logistic_regression.joblib",
+    "Decision Tree": "decision_tree.joblib",
+    "kNN": "knn.joblib",
+    "Naive Bayes": "naive_bayes.joblib",
+    "Random Forest": "random_forest.joblib",
+    "SVM": "svm_provisional.joblib"
 }
 
-FEATURE_COLUMNS = [
-    "mean radius", "mean texture", "mean perimeter", "mean area",
-    "mean smoothness", "mean compactness", "mean concavity",
-    "mean concave points", "mean symmetry", "mean fractal dimension",
-    "radius error", "texture error", "perimeter error", "area error",
-    "smoothness error", "compactness error", "concavity error",
-    "concave points error", "symmetry error", "fractal dimension error",
-    "worst radius", "worst texture", "worst perimeter", "worst area",
-    "worst smoothness", "worst compactness", "worst concavity",
-    "worst concave points", "worst symmetry", "worst fractal dimension",
-]
+if uploaded_file is not None:
+    # Read the uploaded test CSV file
+    df = pd.read_csv(uploaded_file)
+    
+    # Adjust column name check based on your dataset (target column can be 'Churn' or 'Diagnosis')
+    target_col = "Churn" if "Churn" in df.columns else ("diagnosis" if "diagnosis" in df.columns else df.columns[-1])
+    
+    X_test = df.drop(columns=[target_col])
+    y_test = df[target_col]
+    
+    # If target is categorical (like 'M'/'B'), map it to binary 1/0 if needed
+    if y_test.dtype == object:
+        y_test = y_test.map({'M': 1, 'B': 0, 'Yes': 1, 'No': 0})
 
-st.set_page_config(page_title="ML Assignment 2", page_icon="📊", layout="wide")
-st.title("Machine Learning Classification Dashboard")
-st.caption("UCI Breast Cancer Wisconsin (Diagnostic) dataset")
+    model_path = file_map[model_choice]
+    
+    if os.path.exists(model_path):
+        model = joblib.load(model_path)
+        y_pred = model.predict(X_test)
+        y_proba = model.predict_proba(X_test)[:, 1] if hasattr(model, "predict_proba") else y_pred
 
-with st.sidebar:
-    st.header("Controls")
-    model_name = st.selectbox("Select model", list(MODEL_PATHS))
-    uploaded = st.file_uploader("Upload test data (CSV)", type=["csv"])
+        st.subheader(f"Evaluation Metrics: {model_choice}")
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
+        col1.metric("Accuracy", f"{accuracy_score(y_test, y_pred):.4f}")
+        col2.metric("AUC", f"{roc_auc_score(y_test, y_proba):.4f}")
+        col3.metric("Precision", f"{precision_score(y_test, y_pred, zero_division=0):.4f}")
+        col4.metric("Recall", f"{recall_score(y_test, y_pred, zero_division=0):.4f}")
+        col5.metric("F1 Score", f"{f1_score(y_test, y_pred, zero_division=0):.4f}")
+        col6.metric("MCC Score", f"{matthews_corrcoef(y_test, y_pred):.4f}")
 
-st.write(
-    "Upload the test CSV generated for the assignment. The file should contain "
-    "the 30 feature columns and a diagnosis column with M (malignant) or B (benign)."
-)
-
-if uploaded is None:
-    st.info("Upload test_data.csv to evaluate the selected model.")
-    st.stop()
-
-df = pd.read_csv(io.BytesIO(uploaded.getvalue()))
-missing = [c for c in FEATURE_COLUMNS if c not in df.columns]
-if missing:
-    st.error(f"Missing feature columns: {missing}")
-    st.stop()
-if "diagnosis" not in df.columns:
-    st.error("The uploaded CSV must contain a 'diagnosis' column.")
-    st.stop()
-
-X = df[FEATURE_COLUMNS]
-y_true = df["diagnosis"].astype(str).str.upper().map({"M": 1, "B": 0})
-if y_true.isna().any():
-    st.error("Diagnosis values must be M or B.")
-    st.stop()
-
-model = joblib.load(MODEL_PATHS[model_name])
-y_pred = model.predict(X)
-y_score = (
-    model.predict_proba(X)[:, 1]
-    if hasattr(model, "predict_proba")
-    else model.decision_function(X)
-)
-
-metrics = {
-    "Accuracy": accuracy_score(y_true, y_pred),
-    "AUC": roc_auc_score(y_true, y_score),
-    "Precision": precision_score(y_true, y_pred, zero_division=0),
-    "Recall": recall_score(y_true, y_pred, zero_division=0),
-    "F1": f1_score(y_true, y_pred, zero_division=0),
-    "MCC": matthews_corrcoef(y_true, y_pred),
-}
-
-cols = st.columns(6)
-for col, (label, value) in zip(cols, metrics.items()):
-    col.metric(label, f"{value:.4f}")
-
-st.subheader("Confusion Matrix")
-cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
-cm_df = pd.DataFrame(cm, index=["Actual B", "Actual M"], columns=["Predicted B", "Predicted M"])
-st.dataframe(cm_df, use_container_width=True)
-
-st.subheader("Classification Report")
-report = classification_report(
-    y_true, y_pred, target_names=["Benign", "Malignant"], output_dict=True, zero_division=0
-)
-st.dataframe(pd.DataFrame(report).T.round(4), use_container_width=True)
-
-st.subheader("Predictions")
-out = df.copy()
-out["predicted_diagnosis"] = np.where(y_pred == 1, "M", "B")
-out["malignant_probability"] = y_score
-st.dataframe(out, use_container_width=True)
+        st.subheader("Confusion Matrix")
+        fig, ax = plt.subplots(figsize=(4, 3))
+        sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt="d", cmap="Blues", ax=ax)
+        st.pyplot(fig)
+    else:
+        st.error(f"Model file '{model_path}' not found in the root directory.")
+else:
+    st.info("Please upload your 'test_data.csv' file using the sidebar to view evaluation results.")
