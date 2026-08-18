@@ -1,0 +1,62 @@
+{
+  "dataset": "UCI Breast Cancer Wisconsin (Diagnostic)",
+  "split": "80/20 stratified",
+  "random_state": 42,
+  "positive_class": "M malignant",
+  "metrics": [
+    {
+      "Model": "Logistic Regression",
+      "Accuracy": 0.9649,
+      "AUC": 0.996,
+      "Precision": 0.975,
+      "Recall": 0.9286,
+      "F1": 0.9512,
+      "MCC": 0.9245
+    },
+    {
+      "Model": "Decision Tree",
+      "Accuracy": 0.9298,
+      "AUC": 0.9246,
+      "Precision": 0.9048,
+      "Recall": 0.9048,
+      "F1": 0.9048,
+      "MCC": 0.8492
+    },
+    {
+      "Model": "kNN",
+      "Accuracy": 0.9561,
+      "AUC": 0.9823,
+      "Precision": 0.9744,
+      "Recall": 0.9048,
+      "F1": 0.9383,
+      "MCC": 0.9058
+    },
+    {
+      "Model": "Naive Bayes",
+      "Accuracy": 0.9386,
+      "AUC": 0.9934,
+      "Precision": 1.0,
+      "Recall": 0.8333,
+      "F1": 0.9091,
+      "MCC": 0.8715
+    },
+    {
+      "Model": "Random Forest",
+      "Accuracy": 0.9737,
+      "AUC": 0.9944,
+      "Precision": 1.0,
+      "Recall": 0.9286,
+      "F1": 0.963,
+      "MCC": 0.9442
+    },
+    {
+      "Model": "SVM (provisional)",
+      "Accuracy": 0.9737,
+      "AUC": 0.9947,
+      "Precision": 1.0,
+      "Recall": 0.9286,
+      "F1": 0.963,
+      "MCC": 0.9442
+    }
+  ]
+}
