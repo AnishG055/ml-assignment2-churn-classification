@@ -14,7 +14,7 @@ st.title("📊 Model Evaluation & Classification Dashboard")
 st.sidebar.header("Configuration")
 uploaded_file = st.sidebar.file_uploader("Upload test_data.csv", type=["csv"])
 
-# Updated model options matching your repository filenames and extensions
+# Model options matching your repository filenames and extensions
 model_choice = st.sidebar.selectbox(
     "Select Classification Model",
     ["Logistic Regression", "Decision Tree", "kNN", "Naive Bayes", "Random Forest", "SVM"]
@@ -34,22 +34,33 @@ if uploaded_file is not None:
     # Read the uploaded test CSV file
     df = pd.read_csv(uploaded_file)
     
-    # Adjust column name check based on your dataset (target column can be 'Churn' or 'Diagnosis')
+    # Adjust column name check based on your dataset (target column can be 'Churn' or 'diagnosis')
     target_col = "Churn" if "Churn" in df.columns else ("diagnosis" if "diagnosis" in df.columns else df.columns[-1])
     
     X_test = df.drop(columns=[target_col])
     y_test = df[target_col]
     
-    # If target is categorical (like 'M'/'B'), map it to binary 1/0 if needed
-    if y_test.dtype == object:
-        y_test = y_test.map({'M': 1, 'B': 0, 'Yes': 1, 'No': 0})
+    # Robustly handle categorical or string-based target labels in y_test
+    if y_test.dtype == object or pd.api.types.is_string_dtype(y_test):
+        mapping = {'M': 1, 'B': 0, 'm': 1, 'b': 0, 'Yes': 1, 'No': 0, 'yes': 1, 'no': 0}
+        if set(y_test.dropna().unique()).issubset(mapping.keys()):
+            y_test = y_test.map(mapping)
+        else:
+            y_test = pd.to_numeric(y_test, errors='coerce')
+            
+    # Force y_test to integer
+    y_test = y_test.astype(int)
 
     model_path = file_map[model_choice]
     
     if os.path.exists(model_path):
         model = joblib.load(model_path)
         y_pred = model.predict(X_test)
-        y_proba = model.predict_proba(X_test)[:, 1] if hasattr(model, "predict_proba") else y_pred
+        
+        # Force y_pred to integer to match y_test and avoid type mix errors
+        y_pred = pd.Series(y_pred).astype(int).values
+        
+        y_proba = model.predict_proba(X_test)[:, 1] if hasattr(model, "predict_proba") else y_pred.astype(float)
 
         st.subheader(f"Evaluation Metrics: {model_choice}")
         col1, col2, col3, col4, col5, col6 = st.columns(6)
