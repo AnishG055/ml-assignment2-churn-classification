@@ -22,7 +22,7 @@ Wolberg, W., Mangasarian, O., Street, N., & Street, W. (1993). *Breast Cancer Wi
 ## c. Github Repository Link
 
 **To be replaced after creating the repository:**
-`https://github.com/<your-username>/<your-repository-name>`
+`(https://github.com/AnishG055/ml-assignment2-churn-classification)`
 
 Repository should contain:
 - `app.py`
